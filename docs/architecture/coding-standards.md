@@ -8,6 +8,7 @@
 - Favor composition over inheritance
 - Use consistent indentation (2 spaces for web technologies, 4 for Python)
 - Maximum line length: 100 characters
+- **Maximum file length: 500 lines** - Files exceeding this limit should be split into smaller, focused modules
 
 ### Documentation
 - Document complex business logic and algorithms
@@ -326,6 +327,7 @@ docs(readme): update installation instructions
 - [ ] No code duplication
 - [ ] Functions are appropriately sized
 - [ ] Variable and function names are descriptive
+- [ ] **No file exceeds 500 lines** - Large files are split into focused modules
 
 ### Security
 - [ ] Input validation implemented
