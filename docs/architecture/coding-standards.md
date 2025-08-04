@@ -1,49 +1,53 @@
 # Coding Standards
 
-## General Principles
+These standards are **MANDATORY** for AI agents and directly control code generation behavior. They build upon the existing project standards while adapting for the local-first browser architecture.
 
-### Code Quality
-- Write self-documenting code with clear, descriptive names
-- Keep functions small and focused (single responsibility principle)
-- Favor composition over inheritance
-- Use consistent indentation (2 spaces for web technologies, 4 for Python)
-- Maximum line length: 100 characters
-- **Maximum file length: 500 lines** - Files exceeding this limit should be split into smaller, focused modules
+## Core Standards
+- **Languages & Runtimes:** TypeScript 5.3.3, Browser JavaScript ES2022+
+- **Style & Linting:** ESLint with TypeScript rules, Prettier for formatting
+- **Test Organization:** Manual test scenarios in `/tests/` directory, documented in Markdown
+- **File Size Limit:** **Maximum 500 lines per file** - Files exceeding this must be split into smaller, focused modules
 
-### Documentation
-- Document complex business logic and algorithms
-- Use JSDoc/TSDoc for function signatures
-- Keep README files up to date
-- Document API endpoints and data models
+## Critical Rules
 
-## Language-Specific Standards
+- **Database Operations:** Always use Repository pattern - never direct Dexie calls in components
+- **Error Handling:** Use Result<T, E> pattern for all operations that can fail
+- **Image Storage:** Convert all images to WebP format before storing in IndexedDB
+- **Type Safety:** No `any` types - use proper TypeScript interfaces for all data
+- **Local Storage:** Use IndexedDB via Dexie for structured data, LocalStorage only for simple settings
+- **Component State:** Use Zustand stores for shared state, React state for component-local only
+- **File Organization:** One component per file, export from index.ts files
+- **Console Logging:** Never use console.log in production - use LoggingService instead
+- **Case Number Format:** Use 8-digit format (e.g., "05907169") for all case numbers
+- **JIRA Ticket Validation:** Use "DOMO-456837" and "HIVE-2263" format validation
+- **WebP Conversion:** All image uploads must be converted to WebP with quality 0.8
+- **UUID Generation:** Use crypto.randomUUID() for all ID generation
+- **File Size Limit:** **No file shall exceed 500 lines** - split into focused modules instead
 
-### JavaScript/TypeScript
-```javascript
-// Use const by default, let when reassignment needed
-const apiUrl = 'https://api.example.com';
-let counter = 0;
+## Naming Conventions
 
-// Function naming: camelCase, descriptive verbs
-function calculateTotalPrice(items) {
-  return items.reduce((sum, item) => sum + item.price, 0);
-}
+| Element | Convention | Example |
+|---------|------------|---------|
+| Components | PascalCase | `CaseManager.tsx`, `ImageGallery.tsx` |
+| Services | camelCase with Service suffix | `caseService.ts`, `hivemindService.ts` |
+| Hooks | camelCase with "use" prefix | `useDatabase.ts`, `useImageProcessing.ts` |
+| Types/Interfaces | PascalCase | `Case`, `HivemindReport`, `DatabaseSchema` |
+| Utilities | camelCase | `formatDate.ts`, `validateEmail.ts` |
+| Constants | SCREAMING_SNAKE_CASE for values | `MAX_FILE_SIZE`, `DEFAULT_PRIORITY` |
+| Database Tables | camelCase | `cases`, `hivemindReports`, `imageGallery` |
 
-// Use arrow functions for callbacks and short functions
-const filtered = items.filter(item => item.active);
+## Language-Specific Guidelines
 
-// Destructuring for cleaner code
-const { name, email } = user;
-const [first, ...rest] = items;
-```
-
-#### TypeScript Specific
-- Always use explicit types for function parameters and return values
-- Use interfaces for object shapes, types for unions/primitives
-- Enable strict mode in tsconfig.json
-- Use optional chaining and nullish coalescing
+### TypeScript Specifics
+- **Strict Mode:** Enable all strict TypeScript compiler options
+- **Explicit Types:** Always use explicit types for function parameters and return values
+- **Interface Usage:** Use interfaces for object shapes, types for unions/primitives
+- **Optional Chaining:** Use optional chaining (?.) and nullish coalescing (??) operators
+- **Type Guards:** Create type guard functions for runtime type checking
+- **Generic Constraints:** Always constrain generics with extends when possible
 
 ```typescript
+// Good: Explicit types and proper interfaces
 interface User {
   id: string;
   name: string;
@@ -53,320 +57,212 @@ interface User {
 function processUser(user: User): Promise<ProcessedUser> {
   return processUserData(user);
 }
-```
 
-### Python
-```python
-# Use snake_case for variables and functions
-def calculate_total_price(items):
-    return sum(item.price for item in items)
-
-# Use PascalCase for classes
-class UserService:
-    def __init__(self, database_url: str):
-        self.database_url = database_url
-
-# Type hints for function signatures
-def get_user_by_id(user_id: int) -> Optional[User]:
-    return database.query(User).filter(User.id == user_id).first()
-```
-
-### CSS/SCSS
-```css
-/* Use BEM methodology for class naming */
-.card {
-  padding: 1rem;
-}
-
-.card__header {
-  font-weight: bold;
-}
-
-.card__header--large {
-  font-size: 1.5rem;
-}
-
-/* Use semantic color names */
-:root {
-  --color-primary: #007bff;
-  --color-danger: #dc3545;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
+// Good: Result pattern for error handling
+async function createCase(data: CaseInput): Promise<Result<Case, ValidationError>> {
+  try {
+    const validation = await validateCaseData(data);
+    if (!validation.success) {
+      return { success: false, error: validation.error };
+    }
+    
+    const case = await caseRepository.create(data);
+    return { success: true, data: case };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: new DatabaseError('Failed to create case') 
+    };
+  }
 }
 ```
 
-## File Organization
+### React Specifics
+- **Hook Dependencies:** Always include all dependencies in useEffect/useCallback dependency arrays
+- **Component Props:** Use interfaces for component props, never inline types
+- **State Updates:** Use functional state updates when depending on previous state
+- **Event Handlers:** Use useCallback for event handlers passed to child components
+- **Memoization:** Use React.memo, useMemo, and useCallback judiciously - not by default
 
-### Monorepo Structure
-This project uses a separated structure with three main packages:
+```typescript
+// Good: Proper React component structure
+interface CaseFormProps {
+  initialData?: Partial<Case>;
+  onSubmit: (case: Case) => void;
+  onCancel: () => void;
+}
 
+const CaseForm: React.FC<CaseFormProps> = ({ 
+  initialData, 
+  onSubmit, 
+  onCancel 
+}) => {
+  const [formData, setFormData] = useState<CaseInput>(() => 
+    initialData || getDefaultCaseData()
+  );
+
+  const handleSubmit = useCallback((e: FormEvent) => {
+    e.preventDefault();
+    // Handle submission
+  }, [formData, onSubmit]);
+
+  useEffect(() => {
+    // Cleanup function for any subscriptions
+    return () => {
+      // Cleanup logic
+    };
+  }, []);
+
+  return (
+    // Component JSX
+  );
+};
 ```
-supportAgency/
-├── src/                 # All source code
-│   ├── frontend/        # Client-side application
-│   │   ├── src/
-│   │   │   ├── components/ # UI components
-│   │   │   ├── pages/   # Page components
-│   │   │   ├── services/ # API client services
-│   │   │   ├── hooks/   # Custom React hooks
-│   │   │   ├── stores/  # State management
-│   │   │   └── utils/   # Frontend utilities
-│   │   └── tests/       # Frontend tests
-│   ├── backend/         # Server-side application
-│   │   ├── src/
-│   │   │   ├── controllers/ # Request handlers
-│   │   │   ├── services/ # Business logic
-│   │   │   ├── models/  # Data models
-│   │   │   ├── routes/  # API routes
-│   │   │   └── middleware/ # Express middleware
-│   │   └── tests/       # Backend tests
-│   └── shared/          # Code shared between frontend/backend
-│       ├── types/       # Shared TypeScript types
-│       ├── utils/       # Shared utilities
-│       ├── constants/   # Shared constants
-│       └── schemas/     # Validation schemas
-```
 
-### File Naming Conventions
+### IndexedDB/Dexie Specifics
+- **Schema Versioning:** Always increment version number when changing schema
+- **Index Strategy:** Create indexes for all frequently queried fields
+- **Bulk Operations:** Use bulkAdd/bulkPut for multiple record operations
+- **Transaction Scope:** Keep transactions as narrow as possible in scope
+- **Error Recovery:** Implement retry logic for failed database operations
 
-#### Frontend
-- **Components**: PascalCase (`UserProfile.tsx`, `LoginForm.tsx`)
-- **Pages**: PascalCase (`Dashboard.tsx`, `SettingsPage.tsx`)
-- **Services**: camelCase (`userService.ts`, `authApi.ts`)
-- **Utilities**: camelCase (`formatDate.ts`, `validateEmail.ts`)
-- **Types**: camelCase with `.types.ts` suffix
+```typescript
+// Good: Repository pattern with proper error handling
+class CaseRepository {
+  constructor(private db: Database) {}
 
-#### Backend
-- **Controllers**: camelCase (`userController.ts`, `authController.ts`)
-- **Services**: camelCase (`emailService.ts`, `databaseService.ts`)
-- **Models**: PascalCase (`User.ts`, `Product.ts`)
-- **Routes**: camelCase (`userRoutes.ts`, `authRoutes.ts`)
+  async create(data: CaseInput): Promise<Result<Case, DatabaseError>> {
+    try {
+      const case: Case = {
+        id: crypto.randomUUID(),
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
 
-#### Shared
-- **Types**: camelCase with `.types.ts` suffix
-- **Utilities**: camelCase
-- **Constants**: SCREAMING_SNAKE_CASE for values, camelCase for files
-- **Schemas**: camelCase with `.schema.ts` suffix
+      await this.db.transaction('rw', this.db.cases, async () => {
+        await this.db.cases.add(case);
+      });
 
-### Import Path Configuration
-Configure absolute imports in `tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@frontend/*": ["src/frontend/src/*"],
-      "@backend/*": ["src/backend/src/*"],
-      "@shared/*": ["src/shared/*"]
+      return { success: true, data: case };
+    } catch (error) {
+      return {
+        success: false,
+        error: new DatabaseError(`Failed to create case: ${error.message}`)
+      };
     }
   }
 }
 ```
 
-## Error Handling
+## File Organization Standards
 
-### Frontend
-```javascript
-// Use try-catch for async operations
-async function fetchUser(id) {
+Based on existing standards but adapted for local-first architecture:
+
+```
+src/
+├── components/           # React components (PascalCase files)
+│   ├── common/          # Shared UI components
+│   ├── cases/           # Case-specific components  
+│   └── index.ts         # Barrel exports
+├── services/            # Business logic (camelCase files)
+│   ├── database/        # IndexedDB repositories
+│   ├── content-processing/
+│   └── index.ts
+├── hooks/               # Custom React hooks (camelCase with use prefix)
+├── stores/              # Zustand stores (camelCase files)
+├── types/               # TypeScript definitions (camelCase files)
+├── utils/               # Utility functions (camelCase files)
+└── constants/           # Application constants (camelCase files)
+```
+
+## Import Organization
+```typescript
+// 1. External library imports
+import React, { useState, useCallback } from 'react';
+import { nanoid } from 'nanoid';
+
+// 2. Internal service imports
+import { caseService } from '@/services/caseService';
+import { useDatabase } from '@/hooks/useDatabase';
+
+// 3. Type imports
+import type { Case, CaseInput } from '@/types/case';
+
+// 4. Component imports
+import { Button } from '@/components/common/Button';
+```
+
+## Security Standards for Browser Application
+
+```typescript
+// Input validation for all user data
+function validateCaseInput(data: unknown): Result<CaseInput, ValidationError> {
+  const schema = z.object({
+    title: z.string().min(1).max(200),
+    description: z.string().min(10).max(5000),
+    priority: z.enum(['low', 'medium', 'high', 'critical'])
+  });
+
   try {
-    const response = await api.get(`/users/${id}`);
-    return response.data;
+    const validData = schema.parse(data);
+    return { success: true, data: validData };
   } catch (error) {
-    logger.error('Failed to fetch user:', error);
-    throw new UserFetchError(`Unable to fetch user ${id}`);
+    return { 
+      success: false, 
+      error: new ValidationError('Invalid case data', { zodError: error })
+    };
   }
 }
 
-// Custom error classes
-class UserFetchError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'UserFetchError';
+// Secure clipboard operations
+async function copyToClipboard(text: string): Promise<Result<void, ClipboardError>> {
+  if (!navigator.clipboard) {
+    return {
+      success: false,
+      error: new ClipboardError('Clipboard API not available')
+    };
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return { success: true, data: undefined };
+  } catch (error) {
+    return {
+      success: false,
+      error: new ClipboardError(`Failed to copy: ${error.message}`)
+    };
   }
 }
-```
-
-### Backend
-```python
-# Use specific exception classes
-class UserNotFoundError(Exception):
-    """Raised when a user cannot be found"""
-    pass
-
-def get_user(user_id: int) -> User:
-    try:
-        return database.get_user(user_id)
-    except DatabaseError as e:
-        logger.error(f"Database error fetching user {user_id}: {e}")
-        raise UserNotFoundError(f"User {user_id} not found") from e
-```
-
-## Testing Standards
-
-### Unit Tests
-- Test file naming: `component.test.ts` or `test_service.py`
-- One test file per source file
-- Use descriptive test names: `should_return_error_when_user_not_found`
-- Follow AAA pattern: Arrange, Act, Assert
-
-```javascript
-describe('UserService', () => {
-  describe('getUserById', () => {
-    it('should return user when valid ID provided', async () => {
-      // Arrange
-      const userId = 123;
-      const expectedUser = { id: 123, name: 'John' };
-      
-      // Act
-      const result = await userService.getUserById(userId);
-      
-      // Assert
-      expect(result).toEqual(expectedUser);
-    });
-  });
-});
-```
-
-### Integration Tests
-- Test API endpoints end-to-end
-- Use test databases/environments
-- Clean up test data after each test
-
-## Security Standards
-
-### Input Validation
-```javascript
-// Validate all user inputs
-function createUser(userData) {
-  const schema = Joi.object({
-    name: Joi.string().min(1).max(100).required(),
-    email: Joi.string().email().required(),
-    age: Joi.number().integer().min(18).max(120)
-  });
-  
-  const { error, value } = schema.validate(userData);
-  if (error) throw new ValidationError(error.details[0].message);
-  
-  return value;
-}
-```
-
-### SQL Injection Prevention
-```python
-# Use parameterized queries
-def get_user_by_email(email: str) -> Optional[User]:
-    query = "SELECT * FROM users WHERE email = %s"
-    return database.execute(query, (email,))
-```
-
-### Environment Variables
-- Never commit secrets to version control
-- Use environment variables for sensitive data
-- Validate required environment variables on startup
-
-```javascript
-const config = {
-  databaseUrl: process.env.DATABASE_URL || (() => {
-    throw new Error('DATABASE_URL environment variable is required');
-  })(),
-  apiKey: process.env.API_KEY || (() => {
-    throw new Error('API_KEY environment variable is required');
-  })()
-};
 ```
 
 ## Performance Guidelines
 
-### Frontend
-- Use lazy loading for components and routes
-- Implement proper memoization with React.memo, useMemo, useCallback
-- Optimize bundle size with code splitting
-- Use Web Vitals metrics for monitoring
+```typescript
+// Lazy loading for large components
+const ImageGallery = lazy(() => import('@/components/image-gallery/ImageGallery'));
 
-### Backend
-- Implement database query optimization
-- Use caching strategies (Redis, in-memory)
-- Implement proper indexing
-- Monitor and log performance metrics
+// Proper memoization
+const MemoizedCaseList = React.memo(CaseList, (prevProps, nextProps) => {
+  return prevProps.cases.length === nextProps.cases.length &&
+         prevProps.filter === nextProps.filter;
+});
 
-## Git Standards
-
-### Commit Messages
-Follow conventional commits format:
-```
-type(scope): description
-
-feat(auth): add JWT token validation
-fix(api): resolve user creation endpoint error
-docs(readme): update installation instructions
+// Efficient IndexedDB queries
+const casesByStatus = useMemo(async () => {
+  return await db.cases
+    .where('status')
+    .equals(selectedStatus)
+    .limit(50)
+    .toArray();
+}, [selectedStatus]);
 ```
 
-### Branch Naming
-- Feature branches: `feature/add-user-authentication`
-- Bug fixes: `fix/resolve-login-error`
-- Hotfixes: `hotfix/critical-security-patch`
-
-### Pull Request Guidelines
-- Use descriptive titles and descriptions
-- Include testing instructions
-- Link related issues
-- Require code review before merging
-- Ensure CI/CD passes before merge
-
-## Code Review Checklist
-
-### Functionality
-- [ ] Code works as intended
-- [ ] Edge cases are handled
-- [ ] Error handling is appropriate
-- [ ] Performance considerations addressed
-
-### Code Quality
-- [ ] Follows coding standards
-- [ ] No code duplication
-- [ ] Functions are appropriately sized
-- [ ] Variable and function names are descriptive
-- [ ] **No file exceeds 500 lines** - Large files are split into focused modules
-
-### Security
-- [ ] Input validation implemented
-- [ ] No hardcoded secrets
-- [ ] Authentication/authorization properly implemented
-- [ ] SQL injection prevention measures
-
-### Testing
-- [ ] Unit tests included and passing
-- [ ] Integration tests where appropriate
-- [ ] Test coverage is adequate
-- [ ] Tests are maintainable
-
-## Tools and Linting
-
-### Required Tools
-- ESLint for JavaScript/TypeScript
-- Prettier for code formatting
-- Husky for git hooks
-- Jest for testing
-- SonarQube for code quality analysis
-
-### Configuration Files
-Ensure these files are present and properly configured:
-- `.eslintrc.js`
-- `.prettierrc`
-- `jest.config.js`
-- `tsconfig.json` (for TypeScript projects)
-- `.gitignore`
-
-## Maintenance
-
-### Regular Reviews
-- Review and update coding standards quarterly
-- Incorporate team feedback and industry best practices
-- Update tooling and dependencies regularly
-- Monitor code quality metrics and adjust standards as needed
-
-### Documentation Updates
-- Keep this document synchronized with actual practices
-- Update examples to reflect current codebase patterns
-- Document any project-specific deviations from these standards
+## Key Adaptations from Existing Standards:
+- **Removed backend/server patterns** (controllers, routes, SQL) - not applicable
+- **Added IndexedDB/Dexie patterns** specific to browser database
+- **Enhanced React patterns** for complex state management
+- **Added WebP/Canvas patterns** for image processing
+- **Maintained 500-line file limit** from existing standards
+- **Kept TypeScript strict mode** and type safety requirements
+- **Preserved error handling patterns** but adapted for browser context
