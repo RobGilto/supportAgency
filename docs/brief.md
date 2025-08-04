@@ -88,21 +88,59 @@ A multi-user browser-based application that combines traditional support tools w
 - Access control and permissions
 - Integration with external systems
 
-### 5. Hivemind Structured Reporting
-**Purpose**: Standardized reporting format for internal compliance and product meetings.
+### 5. Hivemind Structured Reporting with Hallucination Safeguards
+**Purpose**: Standardized reporting format for internal compliance and product meetings with built-in accuracy safeguards.
 
-**Functionality**:
-- Predefined report templates
-- Automatic data aggregation
-- Compliance tracking
-- Product feedback collection
-- Trend analysis integration
+**Hivemind Structure Requirements**:
+1. **Description**: Detailed explanation (>200 characters) with context and rationale
+2. **Components/Sub-Components**: System components affected
+3. **Troubleshooting Done**: All steps performed, KB articles used, test environments
+4. **Steps to Reproduce**: Clear, numbered steps (avoid video-only references)
+5. **Case URLs**: Complete URLs (https://) for datasets, dashboards, cases
+6. **Engineering Info**: Error messages, logs, Client TOE (or "N/A" if unavailable)
 
-**Technical Considerations**:
-- Template engine for report generation
-- Data export capabilities
-- Integration with business intelligence tools
-- Audit trail maintenance
+**Pre-Check Requirements**:
+- DOMO Jiras
+- Salesforce KB
+- Other Hiveminds
+- Other Salesforce Cases
+- Warrooms
+
+**Hallucination Prevention Safeguards**:
+
+**Layer 1 - Pre-LLM Validation**:
+- **Mandatory Field Checker**: Validates all required fields before prompt generation
+- **Data Completeness Score**: Visual indicator showing % of fields populated
+- **Pre-submission Checklist**: Interactive checklist for pre-check requirements
+- **Character Count Validation**: Ensures description meets 200+ character requirement
+
+**Layer 2 - Smart Prompt Engineering**:
+```
+Template Structure:
+- [KNOWN DATA]: {field: value} - Only include verified information
+- [MISSING DATA]: Request specific information from user
+- [DO NOT GUESS]: Explicitly list fields that need user input
+- [VALIDATION RULES]: Include field requirements in prompt
+```
+
+**Layer 3 - Interactive LLM Workflow**:
+1. **Initial Prompt Generation**: WebApp creates structured prompt with known data
+2. **LLM Response Analysis**: Domo LLM identifies missing required fields
+3. **User Clarification Loop**: LLM asks specific questions for missing data
+4. **Validation Checkpoint**: User reviews before final submission
+
+**Layer 4 - Post-LLM Validation**:
+- **Format Parser**: Validates Hivemind structure compliance
+- **Cross-Reference Check**: Compares generated content against source case data
+- **URL Validator**: Ensures all URLs are complete and accessible
+- **Diff View**: Shows changes/additions made by LLM for user review
+
+**Technical Implementation**:
+- Structured prompt templates with validation rules
+- Real-time field validation during user input
+- LLM instruction set emphasizing accuracy over completeness
+- Version control for all generated Hiveminds
+- Audit trail of user confirmations
 
 ### 6. Pattern Matching and Suggestions
 **Purpose**: Improve efficiency through historical case analysis and rule-based matching.
@@ -168,22 +206,91 @@ A multi-user browser-based application that combines traditional support tools w
 - Statistical analysis algorithms
 - Reporting dashboard
 
-### 10. Web Scraping Integration
-**Purpose**: Automatic synchronization with Domo release notes and documentation.
+### 10. Domo LLM Integration (Manual Workflow)
+**Purpose**: Enhance case data and reports through structured LLM interactions while maintaining security.
 
-**Target**: https://domo-support.domo.com/s/article/Current-Release-Notes?language=en_US
+**Integration Approach**: Manual copy-paste workflow with structured prompts
 
 **Functionality**:
-- Scheduled scraping of release notes
-- Change detection and notifications
-- Integration with case management
-- Knowledge base updates
+- **Prompt Generation**: WebApp creates structured prompts from case data
+- **Manual Transfer**: User copies prompt to Domo's secure LLM service
+- **Interactive Enhancement**: LLM asks clarifying questions for missing data
+- **Response Parsing**: WebApp detects and parses LLM output format
+- **Data Integration**: Parsed data updates case objects automatically
+
+**Use Cases**:
+1. **Hivemind Report Generation**: Structured internal reports with compliance
+2. **Customer Email Response Refinement**: Transform engineering responses into client-friendly communications
+3. **Case Enrichment**: Adding context and technical details
+4. **Data Validation**: Cross-checking information completeness
 
 **Technical Considerations**:
-- Web scraping framework
-- Change detection algorithms
-- Content parsing and extraction
-- Rate limiting and respectful scraping
+- Structured prompt template engine
+- Format detection algorithms for LLM responses
+- Markdown parsing and data extraction
+- Validation rules for each use case
+- User confirmation workflows
+
+### 11. Customer Email Response Refinement System
+**Purpose**: Transform technical engineering responses into professional, empathetic customer communications while preserving accuracy.
+
+**Workflow Process**:
+1. **Engineering Response Input**: Agent pastes raw engineering response
+2. **Context Gathering**: System extracts case details, customer history, issue severity
+3. **Structured Prompt Generation**: Creates refinement prompt with guidelines
+4. **LLM Refinement Process**: Interactive refinement with agent guidance
+5. **Review & Approval**: Agent reviews refined response before sending
+
+**Refinement Guidelines Built into Prompts**:
+- **Tone Adjustment**: Technical → Professional and empathetic
+- **Clarity Enhancement**: Complex terms → Simple explanations
+- **Structure Improvement**: Add greeting, summary, action items, next steps
+- **Jargon Translation**: Engineering terminology → Customer-friendly language
+- **Empathy Injection**: Acknowledge frustration, show understanding
+- **Action Clarity**: Clear steps customer should take
+- **Timeline Communication**: Set realistic expectations
+
+**Multi-Step Refinement Process**:
+```
+Step 1: Initial Analysis
+- [ENGINEERING RESPONSE]: {raw technical response}
+- [CUSTOMER CONTEXT]: {case history, severity, relationship}
+- [TONE REQUIREMENTS]: Professional, empathetic, solution-focused
+
+Step 2: Clarification Questions
+- Is this a complete resolution or workaround?
+- Are there any actions the customer needs to take?
+- What is the timeline for resolution?
+- Are there any limitations to communicate?
+
+Step 3: Refinement Iterations
+- Draft 1: Basic translation
+- Draft 2: Add empathy and structure
+- Draft 3: Simplify technical terms
+- Final: Polish and format
+```
+
+**Quality Safeguards**:
+- **Technical Accuracy Preservation**: Key facts highlighted and preserved
+- **Commitment Checker**: Flags any promises about timelines or features
+- **Escalation Language**: Appropriate language for severity levels
+- **Legal Compliance**: Avoids liability-inducing statements
+- **Brand Voice Consistency**: Maintains company communication standards
+
+**Template Components**:
+1. **Greeting**: Personalized based on relationship history
+2. **Acknowledgment**: Recognition of issue impact
+3. **Summary**: Clear explanation of the problem
+4. **Solution/Workaround**: Step-by-step instructions
+5. **Timeline**: When to expect resolution
+6. **Next Steps**: Clear action items
+7. **Closing**: Professional sign-off with support availability
+
+**Success Metrics**:
+- Response clarity score (readability metrics)
+- Customer satisfaction on responses
+- Reduction in follow-up questions
+- Time saved in email composition
 
 
 ## Technical Architecture
@@ -293,9 +400,9 @@ A multi-user browser-based application that combines traditional support tools w
 ## Technical Considerations
 
 ### Scalability Requirements
-- **Concurrent Users**: Support for 50-100 simultaneous users initially
-- **Data Volume**: Handle 1000+ cases per day with attached artifacts
-- **Growth Planning**: Architecture designed for 10x growth over 2 years
+- **User Isolation**: Each user has separate data workspace
+- **Data Volume**: Handle 100+ cases per user with attached artifacts
+- **Growth Planning**: Architecture supports adding new users without impact
 
 ### Performance Targets
 - **Page Load Time**: <2 seconds for initial load
@@ -311,7 +418,7 @@ A multi-user browser-based application that combines traditional support tools w
 - **Data Encryption**: At-rest and in-transit encryption
 
 ### Integration Requirements
-- **Domo APIs**: Integration with existing Domo infrastructure
+- **Domo LLM Service**: Manual integration via structured prompts
 - **Single Sign-On**: Integration with corporate identity systems
 - **External Tools**: Potential integrations with Slack, Teams
 - **Data Export**: Support for various export formats and APIs
