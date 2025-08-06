@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -12,9 +12,51 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const [isContainerReady, setIsContainerReady] = useState(false);
 
+  // Monitor container readiness
   useEffect(() => {
     if (!terminalRef.current) return;
+
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loop
+
+    const checkContainerReady = () => {
+      if (terminalRef.current && attempts < maxAttempts) {
+        const rect = terminalRef.current.getBoundingClientRect();
+        console.log('Container readiness check:', { 
+          attempt: attempts + 1, 
+          width: rect.width, 
+          height: rect.height 
+        });
+        
+        if (rect.width > 0 && rect.height > 0) {
+          console.log('Container ready for terminal initialization');
+          setIsContainerReady(true);
+          return;
+        }
+      }
+      
+      attempts++;
+      if (attempts < maxAttempts) {
+        // If not ready, check again
+        setTimeout(checkContainerReady, 16);
+      } else {
+        console.warn('Container readiness check timeout after', maxAttempts, 'attempts');
+        // Force ready state to prevent hanging
+        setIsContainerReady(true);
+      }
+    };
+
+    // Reset attempts when height changes
+    attempts = 0;
+    setIsContainerReady(false);
+    checkContainerReady();
+  }, [height]);
+
+  // Initialize terminal only when container is ready
+  useEffect(() => {
+    if (!terminalRef.current || !isContainerReady) return;
 
     // Initialize xterm
     const xterm = new XTerm({
@@ -22,7 +64,7 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
         background: '#1a1a1a',
         foreground: '#ffffff',
         cursor: '#ffffff',
-        selection: '#ffffff20',
+        selectionBackground: '#ffffff20',
       },
       fontFamily: 'Consolas, Monaco, "Lucida Console", monospace',
       fontSize: 14,
@@ -35,11 +77,52 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
 
     // Open terminal in container
     xterm.open(terminalRef.current);
-    fitAddon.fit();
-
-    // Store references
+    
+    // Store references first
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
+
+    // More robust fit with container dimension checks
+    const tryFit = () => {
+      if (terminalRef.current && fitAddon) {
+        const container = terminalRef.current;
+        const rect = container.getBoundingClientRect();
+        
+        console.log('Terminal fit attempt:', { 
+          width: rect.width, 
+          height: rect.height, 
+          isVisible: rect.width > 0 && rect.height > 0 
+        });
+        
+        // Only fit if container has valid dimensions
+        if (rect.width > 0 && rect.height > 0) {
+          try {
+            fitAddon.fit();
+            console.log('Terminal fit successful');
+          } catch (error) {
+            console.warn('Terminal fit failed:', error);
+            // Retry after a short delay if fit fails
+            setTimeout(() => {
+              try {
+                fitAddon.fit();
+                console.log('Terminal fit retry successful');
+              } catch (retryError) {
+                console.warn('Terminal fit retry failed:', retryError);
+              }
+            }, 100);
+          }
+        } else {
+          console.log('Container not ready, retrying...');
+          // Container not ready, try again
+          setTimeout(tryFit, 50);
+        }
+      }
+    };
+
+    // Use multiple timing strategies to ensure fit works
+    requestAnimationFrame(() => {
+      requestAnimationFrame(tryFit);
+    });
 
     // Welcome message
     xterm.writeln('Smart Support Agent CLI v1.0.0');
@@ -72,9 +155,22 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
       }
     });
 
-    // Handle resize
+    // Handle resize with robust dimension checks
     const handleResize = () => {
-      fitAddon.fit();
+      if (fitAddon && xtermRef.current && terminalRef.current) {
+        const container = terminalRef.current;
+        const rect = container.getBoundingClientRect();
+        
+        if (rect.width > 0 && rect.height > 0) {
+          requestAnimationFrame(() => {
+            try {
+              fitAddon.fit();
+            } catch (error) {
+              console.warn('Terminal resize fit failed:', error);
+            }
+          });
+        }
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -83,14 +179,23 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
       window.removeEventListener('resize', handleResize);
       xterm.dispose();
     };
-  }, []);
+  }, [isContainerReady]);
 
   useEffect(() => {
-    // Fit terminal when height changes
-    if (fitAddonRef.current) {
-      setTimeout(() => {
-        fitAddonRef.current?.fit();
-      }, 100);
+    // Fit terminal when height changes with robust checks
+    if (fitAddonRef.current && xtermRef.current && terminalRef.current) {
+      const container = terminalRef.current;
+      const rect = container.getBoundingClientRect();
+      
+      if (rect.width > 0 && rect.height > 0) {
+        requestAnimationFrame(() => {
+          try {
+            fitAddonRef.current?.fit();
+          } catch (error) {
+            console.warn('Terminal height change fit failed:', error);
+          }
+        });
+      }
     }
   }, [height]);
 
@@ -110,7 +215,7 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
 
 // Simple command processor for demo purposes
 const processCommand = (command: string, xterm: XTerm) => {
-  const [cmd, ...args] = command.split(' ');
+  const [cmd] = command.split(' ');
   
   switch (cmd.toLowerCase()) {
     case 'help':

@@ -1,11 +1,11 @@
-import { Table } from 'dexie';
+import { Table, IndexableType } from 'dexie';
 import { Result, DatabaseError, ValidationError, NotFoundError } from '@/types';
 
 /**
  * Base repository class implementing common CRUD operations
  * All repositories extend this class to ensure consistent error handling
  */
-export abstract class BaseRepository<T, TKey = string> {
+export abstract class BaseRepository<T, TKey = IndexableType> {
   protected table: Table<T, TKey>;
 
   constructor(table: Table<T, TKey>) {

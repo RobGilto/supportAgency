@@ -82,87 +82,87 @@ export class SmartSupportDatabase extends Dexie {
     });
 
     // Add hooks for automatic timestamping
-    this.cases.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.updatedAt = new Date();
+    this.cases.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).updatedAt = new Date();
     });
 
-    this.cases.hook('updating', (modifications, primKey, obj, trans) => {
-      modifications.updatedAt = new Date();
+    this.cases.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      (modifications as any).updatedAt = new Date();
     });
 
-    this.customers.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.updatedAt = new Date();
+    this.customers.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).updatedAt = new Date();
     });
 
-    this.customers.hook('updating', (modifications, primKey, obj, trans) => {
-      modifications.updatedAt = new Date();
+    this.customers.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      (modifications as any).updatedAt = new Date();
     });
 
-    this.inboxItems.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
+    this.inboxItems.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
     });
 
-    this.artifacts.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
+    this.artifacts.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
     });
 
-    this.imageGallery.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
+    this.imageGallery.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
     });
 
-    this.hivemindReports.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.updatedAt = new Date();
+    this.hivemindReports.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).updatedAt = new Date();
     });
 
-    this.hivemindReports.hook('updating', (modifications, primKey, obj, trans) => {
-      modifications.updatedAt = new Date();
+    this.hivemindReports.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      (modifications as any).updatedAt = new Date();
     });
 
-    this.searchIndex.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.updatedAt = new Date();
+    this.searchIndex.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).updatedAt = new Date();
     });
 
-    this.searchIndex.hook('updating', (modifications, primKey, obj, trans) => {
-      modifications.updatedAt = new Date();
+    this.searchIndex.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      (modifications as any).updatedAt = new Date();
     });
 
-    this.savedSearches.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.lastUsed = new Date();
-      obj.useCount = 1;
+    this.savedSearches.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).lastUsed = new Date();
+      (obj as any).useCount = 1;
     });
 
-    this.userSettings.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
-      obj.updatedAt = new Date();
+    this.userSettings.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
+      (obj as any).updatedAt = new Date();
     });
 
-    this.userSettings.hook('updating', (modifications, primKey, obj, trans) => {
-      modifications.updatedAt = new Date();
+    this.userSettings.hook('updating', (modifications, _primKey, _obj, _trans) => {
+      (modifications as any).updatedAt = new Date();
     });
 
-    this.caseHistory.hook('creating', (primKey, obj, trans) => {
-      obj.timestamp = new Date();
+    this.caseHistory.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).timestamp = new Date();
     });
 
-    this.commandHistory.hook('creating', (primKey, obj, trans) => {
-      obj.executedAt = new Date();
+    this.commandHistory.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).executedAt = new Date();
     });
 
-    this.contentPatterns.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
+    this.contentPatterns.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
     });
 
-    this.analytics.hook('creating', (primKey, obj, trans) => {
-      obj.timestamp = new Date();
+    this.analytics.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).timestamp = new Date();
     });
 
-    this.annotations.hook('creating', (primKey, obj, trans) => {
-      obj.createdAt = new Date();
+    this.annotations.hook('creating', (_primKey, obj, _trans) => {
+      (obj as any).createdAt = new Date();
     });
   }
 
@@ -170,7 +170,7 @@ export class SmartSupportDatabase extends Dexie {
    * Initialize database with default data
    */
   async initializeDefaults(): Promise<void> {
-    const transaction = this.transaction('rw', [
+    await this.transaction('rw', [
       this.userSettings,
       this.hivemindPreChecks,
       this.contentPatterns

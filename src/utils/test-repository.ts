@@ -1,6 +1,5 @@
 import { caseRepository } from '@/services/repositories/CaseRepository';
 import { db } from '@/services/database';
-import { Case } from '@/types';
 
 /**
  * Test utility for repository operations

@@ -21,7 +21,7 @@ export default defineConfig({
           db: ['dexie'],
           ui: ['@headlessui/react'],
           charts: ['chart.js', 'react-chartjs-2'],
-          terminal: ['xterm', '@xterm/addon-fit']
+          terminal: ['xterm', 'xterm-addon-fit']
         }
       }
     }

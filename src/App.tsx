@@ -9,7 +9,12 @@ import DatabaseTestPage from '@/pages/DatabaseTestPage';
 
 function App(): React.ReactElement {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <Routes>
         <Route path="/" element={<Layout />}>
           {/* Default route redirects to cases */}
