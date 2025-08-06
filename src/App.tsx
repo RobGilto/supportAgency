@@ -1,17 +1,32 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from '@/components/Layout';
+import CasesPage from '@/pages/CasesPage';
+import InboxPage from '@/pages/InboxPage';
+import ImageGalleryPage from '@/pages/ImageGalleryPage';
+import AnalyticsPage from '@/pages/AnalyticsPage';
+import DatabaseTestPage from '@/pages/DatabaseTestPage';
 
 function App(): React.ReactElement {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          Smart Support Agent
-        </h1>
-        <p className="text-gray-600">
-          Hello World - Application successfully initialized!
-        </p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          {/* Default route redirects to cases */}
+          <Route index element={<Navigate to="/cases" replace />} />
+          
+          {/* Main application routes */}
+          <Route path="cases" element={<CasesPage />} />
+          <Route path="inbox" element={<InboxPage />} />
+          <Route path="gallery" element={<ImageGalleryPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="test" element={<DatabaseTestPage />} />
+          
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/cases" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
