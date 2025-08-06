@@ -11,6 +11,7 @@ const Navigation: React.FC = () => {
     { path: '/inbox', name: 'Inbox', icon: '📥', description: 'Process new content' },
     { path: '/gallery', name: 'Gallery', icon: '🖼️', description: 'Image management' },
     { path: '/analytics', name: 'Analytics', icon: '📊', description: 'Insights & reports' },
+    { path: '/settings', name: 'Settings', icon: '⚙️', description: 'App preferences' },
     { path: '/test', name: 'DB Test', icon: '🧪', description: 'Database testing' },
   ];
 

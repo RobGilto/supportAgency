@@ -5,6 +5,7 @@ import CasesPage from '@/pages/CasesPage';
 import InboxPage from '@/pages/InboxPage';
 import ImageGalleryPage from '@/pages/ImageGalleryPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
+import SettingsPage from '@/pages/SettingsPage';
 import DatabaseTestPage from '@/pages/DatabaseTestPage';
 
 function App(): React.ReactElement {
@@ -25,6 +26,7 @@ function App(): React.ReactElement {
           <Route path="inbox" element={<InboxPage />} />
           <Route path="gallery" element={<ImageGalleryPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="test" element={<DatabaseTestPage />} />
           
           {/* Catch-all route */}

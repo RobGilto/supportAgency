@@ -235,6 +235,60 @@ export interface SearchPreferences {
   maxResults: number;
 }
 
+// Settings Management Types for Story 4
+export interface AppSettings {
+  theme: Theme;
+  terminalVisible: boolean;
+  terminalHeight: number;
+  sidebarCollapsed: boolean;
+  language: string;
+  timezone: string;
+  notifications: NotificationSettings;
+  privacy: PrivacySettings;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  caseUpdates: boolean;
+  systemAlerts: boolean;
+  soundEnabled: boolean;
+}
+
+export interface PrivacySettings {
+  analyticsEnabled: boolean;
+  crashReporting: boolean;
+  usageStatistics: boolean;
+}
+
+export interface StorageQuota {
+  used: number;
+  available: number;
+  percentage: number;
+  warning: boolean;
+  critical: boolean;
+}
+
+export interface DataExport {
+  version: string;
+  timestamp: Date;
+  settings: AppSettings;
+  cases: Case[];
+  customers: Customer[];
+  inboxItems: InboxItem[];
+  savedSearches: SavedSearch[];
+  imageGallery: Omit<ImageGallery, 'webpBlob' | 'thumbnailBlob'>[]; // Exclude blobs for JSON
+}
+
+export interface DataCleanupOptions {
+  clearCases: boolean;
+  clearCustomers: boolean;
+  clearInboxItems: boolean;
+  clearImages: boolean;
+  clearSearchHistory: boolean;
+  keepSettings: boolean;
+  confirmationRequired: boolean;
+}
+
 // Result Pattern for Error Handling
 export type Result<T, E = Error> = {
   success: true;

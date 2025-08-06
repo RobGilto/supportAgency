@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Navigation from './Navigation';
 import Terminal from './Terminal';
 import { useAppStore } from '@/stores/appStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -12,12 +13,24 @@ const Layout: React.FC = () => {
     setCurrentRoute, 
     error, 
     clearError,
-    isLoading 
+    isLoading,
+    syncWithSettings 
   } = useAppStore();
+
+  const { loadSettings } = useSettingsStore();
 
   useEffect(() => {
     setCurrentRoute(location.pathname);
   }, [location.pathname, setCurrentRoute]);
+
+  // Initialize settings on app startup
+  useEffect(() => {
+    const initializeSettings = async () => {
+      await loadSettings();
+      syncWithSettings();
+    };
+    initializeSettings();
+  }, [loadSettings, syncWithSettings]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
