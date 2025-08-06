@@ -289,6 +289,81 @@ export interface DataCleanupOptions {
   confirmationRequired: boolean;
 }
 
+// Content Processing Types for Story 5
+export interface PasteEvent {
+  id: string;
+  content: string;
+  contentType: DetectedContentType;
+  timestamp: Date;
+  source: 'clipboard' | 'drag-drop' | 'file-upload';
+  confidence: number; // 0-1 confidence score
+  suggestedActions: PasteAction[];
+  metadata: PasteMetadata;
+}
+
+export interface PasteAction {
+  id: string;
+  type: PasteActionType;
+  label: string;
+  description: string;
+  confidence: number;
+  data?: Record<string, any>;
+}
+
+export interface PasteMetadata {
+  urls?: string[];
+  images?: ImageInfo[];
+  consoleErrors?: ConsoleLogEntry[];
+  technicalDetails?: TechnicalInfo;
+  customerInfo?: CustomerInfo;
+  urgencyLevel?: UrgencyLevel;
+}
+
+export interface ImageInfo {
+  dataUrl: string;
+  format: string;
+  size: number;
+  dimensions: { width: number; height: number };
+}
+
+export interface ConsoleLogEntry {
+  level: 'error' | 'warn' | 'info' | 'debug';
+  message: string;
+  timestamp?: Date;
+  source?: string;
+  stackTrace?: string;
+}
+
+export interface TechnicalInfo {
+  browser?: string;
+  os?: string;
+  clientToe?: string;
+  errorMessages?: string[];
+  stackTraces?: string[];
+}
+
+export interface CustomerInfo {
+  name?: string;
+  email?: string;
+  company?: string;
+  detectionConfidence: number;
+}
+
+export interface ContentAnalysisResult {
+  contentType: DetectedContentType;
+  confidence: number;
+  classification: CaseClassification;
+  priority: CasePriority;
+  suggestedTitle?: string;
+  extractedData: PasteMetadata;
+  processingTime: number;
+}
+
+// New types for content processing
+export type DetectedContentType = 'support_request' | 'url_link' | 'console_log' | 'image' | 'mixed_content' | 'plain_text';
+export type PasteActionType = 'create_case' | 'add_to_inbox' | 'extract_url' | 'process_image' | 'analyze_logs' | 'save_for_later';
+export type UrgencyLevel = 'low' | 'medium' | 'high' | 'critical';
+
 // Result Pattern for Error Handling
 export type Result<T, E = Error> = {
   success: true;

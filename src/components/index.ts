@@ -1,3 +1,10 @@
 export { default as Layout } from './Layout';
 export { default as Navigation } from './Navigation';
 export { default as Terminal } from './Terminal';
+export { default as SafeTerminal } from './SafeTerminal';
+export { default as FallbackTerminal } from './FallbackTerminal';
+export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as PasteArea } from './PasteArea';
+export { default as PasteAnalysisCard } from './PasteAnalysisCard';
+export { default as ImageDropZone } from './ImageDropZone';
+export { default as ImageGalleryCarousel } from './ImageGalleryCarousel';

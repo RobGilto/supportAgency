@@ -7,7 +7,10 @@
       "Bash(npx tsc:*)",
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(docker:*)"
+      "Bash(docker:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

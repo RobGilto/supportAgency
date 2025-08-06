@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navigation from './Navigation';
-import Terminal from './Terminal';
+import { SafeTerminal } from './index';
 import { useAppStore } from '@/stores/appStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 
@@ -90,7 +90,7 @@ const Layout: React.FC = () => {
           
           {/* Terminal */}
           {isTerminalVisible && (
-            <Terminal height={terminalHeight} />
+            <SafeTerminal height={terminalHeight} />
           )}
         </div>
       </div>

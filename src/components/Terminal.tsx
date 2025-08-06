@@ -71,63 +71,72 @@ const Terminal: React.FC<TerminalProps> = ({ height = 200, className = '' }) => 
       cursorBlink: true,
     });
 
-    // Initialize fit addon
-    const fitAddon = new FitAddon();
-    xterm.loadAddon(fitAddon);
-
-    // Open terminal in container
-    xterm.open(terminalRef.current);
-    
     // Store references first
     xtermRef.current = xterm;
-    fitAddonRef.current = fitAddon;
 
-    // More robust fit with container dimension checks
+    // Open terminal in container first
+    try {
+      xterm.open(terminalRef.current);
+    } catch (error) {
+      console.error('Failed to open terminal:', error);
+      return;
+    }
+
+    // Initialize fit addon after terminal is opened
+    const fitAddon = new FitAddon();
+    
+    try {
+      xterm.loadAddon(fitAddon);
+      fitAddonRef.current = fitAddon;
+    } catch (error) {
+      console.error('Failed to load fit addon:', error);
+      // Continue without fit addon
+    }
+    
+    // More robust fit with container dimension checks and error handling
     const tryFit = () => {
-      if (terminalRef.current && fitAddon) {
-        const container = terminalRef.current;
-        const rect = container.getBoundingClientRect();
-        
-        console.log('Terminal fit attempt:', { 
-          width: rect.width, 
-          height: rect.height, 
-          isVisible: rect.width > 0 && rect.height > 0 
-        });
-        
-        // Only fit if container has valid dimensions
-        if (rect.width > 0 && rect.height > 0) {
-          try {
-            fitAddon.fit();
-            console.log('Terminal fit successful');
-          } catch (error) {
-            console.warn('Terminal fit failed:', error);
-            // Retry after a short delay if fit fails
-            setTimeout(() => {
-              try {
-                fitAddon.fit();
-                console.log('Terminal fit retry successful');
-              } catch (retryError) {
-                console.warn('Terminal fit retry failed:', retryError);
-              }
-            }, 100);
-          }
-        } else {
-          console.log('Container not ready, retrying...');
-          // Container not ready, try again
-          setTimeout(tryFit, 50);
+      if (!terminalRef.current || !fitAddon || !xtermRef.current) {
+        console.log('Terminal not ready for fitting');
+        return;
+      }
+
+      const container = terminalRef.current;
+      
+      // Check if container is in DOM and has dimensions
+      if (!container.isConnected) {
+        console.log('Container not in DOM, skipping fit');
+        return;
+      }
+
+      const rect = container.getBoundingClientRect();
+      
+      // Only fit if container has valid dimensions
+      if (rect.width > 0 && rect.height > 0) {
+        try {
+          // Attempt to fit the terminal
+          fitAddon.fit();
+          console.log('Terminal fit successful');
+        } catch (error) {
+          console.warn('Terminal fit failed, will continue without fitting:', error);
+          // Don't retry if fit fails - just continue without it
         }
+      } else {
+        console.log('Container has no dimensions, delaying fit');
+        setTimeout(tryFit, 100);
       }
     };
 
-    // Use multiple timing strategies to ensure fit works
-    requestAnimationFrame(() => {
-      requestAnimationFrame(tryFit);
-    });
-
-    // Welcome message
+    // Initialize welcome message first
     xterm.writeln('Smart Support Agent CLI v1.0.0');
     xterm.writeln('Type "help" for available commands.');
     xterm.write('$ ');
+
+    // Delay fitting until after terminal content is written
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(tryFit);
+      });
+    }, 200);
 
     // Handle user input
     let currentLine = '';
