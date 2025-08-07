@@ -4,60 +4,16 @@ import {
   SearchEntityType, 
   SearchFilters,
   SavedSearch,
-  Case,
-  InboxItem,
-  ImageGallery,
-  CaseStatus,
-  CasePriority,
-  CaseClassification,
-  DateRange
+  SearchQuery,
+  SearchResult,
+  SearchMatch,
+  SearchSuggestion,
+  SearchStats,
+  SearchSortField
 } from '@/types';
 import { generateUUID } from '@/utils/generators';
-import { database } from '@/services/database';
+import { db } from '@/services/database';
 
-export interface SearchQuery {
-  text?: string;
-  filters?: SearchFilters;
-  sortBy?: SearchSortField;
-  sortOrder?: 'asc' | 'desc';
-  limit?: number;
-  offset?: number;
-}
-
-export interface SearchResult {
-  id: string;
-  entityId: string;
-  entityType: SearchEntityType;
-  title: string;
-  snippet: string;
-  relevanceScore: number;
-  matches: SearchMatch[];
-  entity: Case | InboxItem | ImageGallery;
-}
-
-export interface SearchMatch {
-  field: string;
-  text: string;
-  startIndex: number;
-  endIndex: number;
-  type: 'exact' | 'fuzzy' | 'semantic';
-}
-
-export interface SearchSuggestion {
-  text: string;
-  type: 'recent' | 'popular' | 'autocomplete';
-  count?: number;
-}
-
-export interface SearchStats {
-  totalResults: number;
-  searchTime: number;
-  mostRelevantScore: number;
-  entityBreakdown: Record<SearchEntityType, number>;
-  filterBreakdown: Record<string, number>;
-}
-
-export type SearchSortField = 'relevance' | 'date' | 'title' | 'priority' | 'status';
 
 export class SearchService {
   private readonly MIN_QUERY_LENGTH = 2;
@@ -185,10 +141,12 @@ export class SearchService {
         name,
         query: query.text || '',
         filters: query.filters || {},
-        createdAt: new Date()
+        createdAt: new Date(),
+        lastUsed: new Date(),
+        useCount: 1
       };
 
-      await database.savedSearches.add(savedSearch);
+      await db.savedSearches.add(savedSearch);
       
       return { success: true, data: savedSearch };
     } catch (error) {
@@ -204,7 +162,7 @@ export class SearchService {
    */
   async getSavedSearches(): Promise<Result<SavedSearch[]>> {
     try {
-      const savedSearches = await database.savedSearches
+      const savedSearches = await db.savedSearches
         .orderBy('createdAt')
         .reverse()
         .toArray();
@@ -223,7 +181,7 @@ export class SearchService {
    */
   async deleteSavedSearch(id: string): Promise<Result<void>> {
     try {
-      await database.savedSearches.delete(id);
+      await db.savedSearches.delete(id);
       return { success: true, data: undefined };
     } catch (error) {
       return {
@@ -242,10 +200,10 @@ export class SearchService {
       let skipped = 0;
 
       // Clear existing index
-      await database.searchIndex.clear();
+      await db.searchIndex.clear();
 
       // Index cases
-      const cases = await database.cases.toArray();
+      const cases = await db.cases.toArray();
       for (const case_ of cases) {
         const result = await this.indexEntity(case_.id, 'case', {
           title: case_.title,
@@ -257,19 +215,19 @@ export class SearchService {
       }
 
       // Index inbox items
-      const inboxItems = await database.inboxItems.toArray();
+      const inboxItems = await db.inboxItems.toArray();
       for (const item of inboxItems) {
         const result = await this.indexEntity(item.id, 'inbox', {
-          title: item.title || 'Untitled',
+          title: `Inbox Item - ${item.contentType}`,
           content: item.content,
-          tags: item.tags || []
+          tags: []
         });
         
         if (result.success) indexed++; else skipped++;
       }
 
       // Index image gallery items
-      const images = await database.imageGallery.toArray();
+      const images = await db.imageGallery.toArray();
       for (const image of images) {
         const result = await this.indexEntity(image.id, 'image', {
           title: image.filename,
@@ -306,7 +264,7 @@ export class SearchService {
       ].join(' ').toLowerCase();
 
       // Remove existing index for this entity
-      await database.searchIndex.where('entityId').equals(entityId).delete();
+      await db.searchIndex.where('entityId').equals(entityId).delete();
 
       const searchIndex: SearchIndex = {
         id: generateUUID(),
@@ -319,7 +277,7 @@ export class SearchService {
         updatedAt: new Date()
       };
 
-      await database.searchIndex.add(searchIndex);
+      await db.searchIndex.add(searchIndex);
       
       return { success: true, data: searchIndex };
     } catch (error) {
@@ -346,7 +304,7 @@ export class SearchService {
    */
   async removeFromIndex(entityId: string): Promise<Result<void>> {
     try {
-      await database.searchIndex.where('entityId').equals(entityId).delete();
+      await db.searchIndex.where('entityId').equals(entityId).delete();
       return { success: true, data: undefined };
     } catch (error) {
       return {
@@ -360,7 +318,7 @@ export class SearchService {
    * Get filtered search indexes
    */
   private async getFilteredIndexes(filters?: SearchFilters): Promise<SearchIndex[]> {
-    let indexes = await database.searchIndex.toArray();
+    let indexes = await db.searchIndex.toArray();
 
     if (!filters) return indexes;
 
@@ -414,8 +372,13 @@ export class SearchService {
           entityId: index.entityId,
           entityType: index.entityType,
           title: index.title,
-          snippet,
+          excerpt: snippet,
           relevanceScore,
+          metadata: {},
+          highlightedText: snippet,
+          createdAt: index.createdAt,
+          updatedAt: index.updatedAt,
+          snippet,
           matches,
           entity: null as any // Will be populated later
         });
@@ -463,13 +426,13 @@ export class SearchService {
       try {
         switch (result.entityType) {
           case 'case':
-            entity = await database.cases.get(result.entityId);
+            entity = await db.cases.get(result.entityId);
             break;
           case 'inbox':
-            entity = await database.inboxItems.get(result.entityId);
+            entity = await db.inboxItems.get(result.entityId);
             break;
           case 'image':
-            entity = await database.imageGallery.get(result.entityId);
+            entity = await db.imageGallery.get(result.entityId);
             break;
         }
 
@@ -494,8 +457,11 @@ export class SearchService {
   private generateSearchStats(results: SearchResult[], totalCount: number, startTime: number): SearchStats {
     const entityBreakdown: Record<SearchEntityType, number> = {
       case: 0,
+      customer: 0,
       inbox: 0,
-      image: 0
+      image: 0,
+      inbox_item: 0,
+      hivemind_report: 0
     };
 
     let maxScore = 0;
@@ -663,7 +629,7 @@ export class SearchService {
     
     try {
       // Get unique words from search index that start with partial query
-      const indexes = await database.searchIndex.toArray();
+      const indexes = await db.searchIndex.toArray();
       const wordSet = new Set<string>();
 
       for (const index of indexes) {
@@ -692,7 +658,7 @@ export class SearchService {
   /**
    * Get recent search suggestions
    */
-  private async getRecentSearchSuggestions(partialQuery: string): Promise<SearchSuggestion[]> {
+  private async getRecentSearchSuggestions(_partialQuery: string): Promise<SearchSuggestion[]> {
     // TODO: Implement search history tracking
     return [];
   }
@@ -700,7 +666,7 @@ export class SearchService {
   /**
    * Get popular search suggestions
    */
-  private async getPopularSearchSuggestions(partialQuery: string): Promise<SearchSuggestion[]> {
+  private async getPopularSearchSuggestions(_partialQuery: string): Promise<SearchSuggestion[]> {
     // TODO: Implement search analytics tracking
     return [];
   }

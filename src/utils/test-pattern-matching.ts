@@ -1,7 +1,6 @@
 import { PatternMatchingService } from '@/services/patternMatchingService';
 import { ContentDetectionEngine } from '@/services/contentDetectionEngine';
 import { contentPatternRepository } from '@/services/repositories/ContentPatternRepository';
-import { caseRepository } from '@/services/repositories/CaseRepository';
 import { Case, ContentPattern, CaseClassification } from '@/types';
 
 /**
@@ -153,7 +152,12 @@ export class PatternMatchingTests {
 
     // Clear existing patterns and add test patterns
     try {
-      await contentPatternRepository.deleteAll();
+      // Delete all existing patterns
+      const allPatterns = await contentPatternRepository.findAll();
+      if (allPatterns.success && allPatterns.data.length > 0) {
+        const ids = allPatterns.data.map(p => p.id);
+        await contentPatternRepository.bulkDelete(ids);
+      }
       for (const pattern of testPatterns) {
         await contentPatternRepository.create(pattern);
       }

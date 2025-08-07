@@ -63,7 +63,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   };
 
   const highlightSnippet = (snippet: string, matches: SearchResult['matches']): React.ReactNode => {
-    if (!matches.length) return snippet;
+    if (!matches || !matches.length) return snippet;
 
     // For now, return snippet as-is. In a full implementation, we'd highlight matches
     return (
@@ -169,7 +169,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                       <span className="capitalize">{getEntityLabel(result.entityType)}</span>
                       <span>•</span>
                       <span>{Math.round(result.relevanceScore * 100)}% relevance</span>
-                      {result.matches.length > 0 && (
+                      {result.matches && result.matches.length > 0 && (
                         <>
                           <span>•</span>
                           <span>{result.matches.length} match(es)</span>
@@ -195,12 +195,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({
               {/* Snippet */}
               {result.snippet && (
                 <div className="text-sm text-gray-600 mb-3">
-                  {highlightSnippet(result.snippet, result.matches)}
+                  {highlightSnippet(result.snippet || result.excerpt, result.matches)}
                 </div>
               )}
 
               {/* Matches */}
-              {result.matches.length > 0 && (
+              {result.matches && result.matches.length > 0 && (
                 <div className="flex items-center space-x-2 text-xs">
                   <span className="text-gray-500">Matches:</span>
                   <div className="flex items-center space-x-1">
@@ -218,7 +218,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
                         {match.text} ({match.type})
                       </span>
                     ))}
-                    {result.matches.length > 3 && (
+                    {result.matches && result.matches.length > 3 && (
                       <span className="text-gray-500">
                         +{result.matches.length - 3} more
                       </span>

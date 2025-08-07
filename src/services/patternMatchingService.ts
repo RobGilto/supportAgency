@@ -1,14 +1,12 @@
 import { 
   Result, 
   ContentPattern, 
-  PatternType, 
   CaseClassification, 
-  DetectedContentType,
   ContentAnalysisResult,
   Case
 } from '@/types';
 import { generateUUID } from '@/utils/generators';
-import { database } from '@/services/database';
+import { db } from '@/services/database';
 
 export interface PatternMatch {
   pattern: ContentPattern;
@@ -152,7 +150,7 @@ export class PatternMatchingService {
       const suggestions: CategorySuggestion[] = [];
       
       // Get existing patterns from database
-      const patterns = await database.contentPatterns.orderBy('confidence').reverse().toArray();
+      const patterns = await db.contentPatterns.orderBy('confidence').reverse().toArray();
       
       // Match against existing patterns
       const patternMatches = this.matchPatterns(content, patterns);
@@ -204,7 +202,7 @@ export class PatternMatchingService {
         successRate: 1.0 // Initial success rate
       };
 
-      await database.contentPatterns.add(pattern);
+      await db.contentPatterns.add(pattern);
       
       return { success: true, data: pattern };
     } catch (error) {
@@ -220,7 +218,7 @@ export class PatternMatchingService {
    */
   async updatePatternFeedback(patternId: string, wasCorrect: boolean): Promise<Result<void>> {
     try {
-      const pattern = await database.contentPatterns.get(patternId);
+      const pattern = await db.contentPatterns.get(patternId);
       if (!pattern) {
         return { success: false, error: new Error('Pattern not found') };
       }
@@ -231,7 +229,7 @@ export class PatternMatchingService {
         ? pattern.successRate + alpha * (1 - pattern.successRate)
         : pattern.successRate + alpha * (0 - pattern.successRate);
 
-      await database.contentPatterns.update(patternId, {
+      await db.contentPatterns.update(patternId, {
         successRate: Math.max(0, Math.min(1, newSuccessRate))
       });
 

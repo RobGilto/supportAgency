@@ -187,14 +187,14 @@ export interface CommandHistory {
 
 // Enums and Types
 export type CaseStatus = 'pending' | 'in_progress' | 'resolved' | 'closed';
-export type CasePriority = 'low' | 'medium' | 'high' | 'urgent';
-export type CaseClassification = 'error' | 'query' | 'feature_request';
+export type CasePriority = 'low' | 'medium' | 'high' | 'urgent' | 'critical';
+export type CaseClassification = 'error' | 'query' | 'feature_request' | 'general' | 'technical' | 'bug';
 export type ContentType = 'text' | 'url' | 'image' | 'console_log' | 'mixed';
 export type InboxSource = 'paste' | 'upload' | 'manual';
 export type PasteIntent = 'create_case' | 'add_to_inbox' | 'analyze' | 'unknown';
 export type RelationshipStrength = 'cold' | 'warm' | 'hot' | 'champion';
 export type AnnotationType = 'highlight_red' | 'highlight_green' | 'arrow' | 'text';
-export type SearchEntityType = 'case' | 'customer' | 'inbox_item' | 'hivemind_report';
+export type SearchEntityType = 'case' | 'customer' | 'inbox' | 'image' | 'inbox_item' | 'hivemind_report';
 export type Theme = 'light' | 'dark' | 'auto';
 export type HistoryAction = 'created' | 'updated' | 'status_changed' | 'assigned' | 'resolved' | 'closed';
 export type PatternType = 'keyword' | 'regex' | 'semantic';
@@ -214,6 +214,56 @@ export interface SearchFilters {
   dateRange?: DateRange;
   tags?: string[];
   customerId?: string;
+}
+
+export type SearchSortField = 'relevance' | 'date' | 'title' | 'priority' | 'status';
+
+export interface SearchQuery {
+  text?: string;
+  filters?: SearchFilters;
+  sortBy?: SearchSortField;
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchResult {
+  id: string;
+  entityId: string;
+  entityType: SearchEntityType;
+  title: string;
+  excerpt: string;
+  relevanceScore: number;
+  metadata: Record<string, any>;
+  highlightedText?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  snippet?: string;
+  matches?: SearchMatch[];
+  entity?: Case | InboxItem | ImageGallery;
+}
+
+export interface SearchSuggestion {
+  text: string;
+  type: 'query' | 'tag' | 'entity' | 'filter' | 'recent' | 'popular' | 'autocomplete';
+  count?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface SearchMatch {
+  field: string;
+  text: string;
+  startIndex: number;
+  endIndex: number;
+  type: 'exact' | 'fuzzy' | 'semantic';
+}
+
+export interface SearchStats {
+  totalResults: number;
+  searchTime: number;
+  mostRelevantScore: number;
+  entityBreakdown: Record<SearchEntityType, number>;
+  filterBreakdown: Record<string, number>;
 }
 
 export interface DateRange {

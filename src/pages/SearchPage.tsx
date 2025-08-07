@@ -12,10 +12,10 @@ const SearchPage: React.FC = () => {
     totalResults: 0,
     searchTime: 0,
     mostRelevantScore: 0,
-    entityBreakdown: { case: 0, inbox: 0, image: 0 },
+    entityBreakdown: { case: 0, customer: 0, inbox: 0, image: 0, inbox_item: 0, hivemind_report: 0 },
     filterBreakdown: {}
   });
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // UI state
@@ -78,7 +78,7 @@ const SearchPage: React.FC = () => {
       totalResults: 0,
       searchTime: 0,
       mostRelevantScore: 0,
-      entityBreakdown: { case: 0, inbox: 0, image: 0 },
+      entityBreakdown: { case: 0, customer: 0, inbox: 0, image: 0, inbox_item: 0, hivemind_report: 0 },
       filterBreakdown: {}
     });
   };
@@ -107,7 +107,7 @@ const SearchPage: React.FC = () => {
       totalResults: 0,
       searchTime: 0,
       mostRelevantScore: 0,
-      entityBreakdown: { case: 0, inbox: 0, image: 0 },
+      entityBreakdown: { case: 0, customer: 0, inbox: 0, image: 0, inbox_item: 0, hivemind_report: 0 },
       filterBreakdown: {}
     });
     setError(null);

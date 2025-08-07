@@ -1,6 +1,6 @@
-import { SavedSearch, SearchFilters, Result } from '@/types';
+import { SavedSearch, SearchFilters, Result, ValidationError, DatabaseError } from '@/types';
 import { BaseRepository } from './base';
-import { database } from '@/services/database';
+import { db } from '@/services/database';
 
 export interface SavedSearchStats {
   totalSavedSearches: number;
@@ -11,7 +11,7 @@ export interface SavedSearchStats {
 
 export class SavedSearchRepository extends BaseRepository<SavedSearch> {
   constructor() {
-    super(database.savedSearches);
+    super(db.savedSearches);
   }
 
   /**
@@ -19,11 +19,12 @@ export class SavedSearchRepository extends BaseRepository<SavedSearch> {
    */
   async findByName(name: string): Promise<Result<SavedSearch[]>> {
     try {
-      const searches = await this.table
+      const allSearches = await this.table.toArray();
+      const searches = allSearches
         .filter(search => search.name.toLowerCase().includes(name.toLowerCase()))
-        .sortBy('createdAt');
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-      return { success: true, data: searches.reverse() };
+      return { success: true, data: searches };
     } catch (error) {
       return this.handleError(error, `Failed to find saved searches by name: ${name}`);
     }
@@ -51,11 +52,10 @@ export class SavedSearchRepository extends BaseRepository<SavedSearch> {
    */
   async getRecentSearches(limit: number = 10): Promise<Result<SavedSearch[]>> {
     try {
-      const searches = await this.table
-        .orderBy('createdAt')
-        .reverse()
-        .limit(limit)
-        .toArray();
+      const allSearches = await this.table.toArray();
+      const searches = allSearches
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit);
 
       return { success: true, data: searches };
     } catch (error) {
@@ -101,7 +101,9 @@ export class SavedSearchRepository extends BaseRepository<SavedSearch> {
         name: newName,
         query: originalSearch.data.query,
         filters: { ...originalSearch.data.filters },
-        createdAt: new Date()
+        createdAt: new Date(),
+        lastUsed: new Date(),
+        useCount: 0
       };
 
       const createResult = await this.create(duplicateSearch);
@@ -345,6 +347,58 @@ export class SavedSearchRepository extends BaseRepository<SavedSearch> {
   private generateId(): string {
     return crypto.randomUUID ? crypto.randomUUID() : 
            'search-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+  }
+
+  /**
+   * Validate SavedSearch entity
+   */
+  protected async validateEntity(savedSearch: SavedSearch): Promise<void> {
+    // Validate required fields
+    if (!savedSearch.name || savedSearch.name.trim().length === 0) {
+      throw new ValidationError('Search name is required', 'name');
+    }
+
+    if (savedSearch.name.length > 100) {
+      throw new ValidationError('Search name must be less than 100 characters', 'name');
+    }
+
+    if (savedSearch.query && savedSearch.query.length > 500) {
+      throw new ValidationError('Search query must be less than 500 characters', 'query');
+    }
+
+    // Validate filters object structure
+    if (!savedSearch.filters || typeof savedSearch.filters !== 'object') {
+      throw new ValidationError('Search filters must be an object', 'filters');
+    }
+
+    // Validate use count is non-negative
+    if (savedSearch.useCount < 0) {
+      throw new ValidationError('Use count cannot be negative', 'useCount');
+    }
+
+    // Validate dates
+    if (savedSearch.createdAt > new Date()) {
+      throw new ValidationError('Created date cannot be in the future', 'createdAt');
+    }
+
+    if (savedSearch.lastUsed > new Date()) {
+      throw new ValidationError('Last used date cannot be in the future', 'lastUsed');
+    }
+
+    if (savedSearch.lastUsed < savedSearch.createdAt) {
+      throw new ValidationError('Last used date cannot be before created date', 'lastUsed');
+    }
+  }
+
+  /**
+   * Handle database errors consistently
+   */
+  protected handleError(error: any, message: string): Result<any, DatabaseError> {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: new DatabaseError(`${message}: ${errorMessage}`)
+    };
   }
 }
 

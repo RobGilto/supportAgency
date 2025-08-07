@@ -8,8 +8,7 @@ import {
   SavedSearch,
   CaseStatus,
   CasePriority,
-  CaseClassification,
-  DateRange
+  CaseClassification
 } from '@/types';
 import { searchService } from '@/services/searchService';
 import { savedSearchRepository } from '@/services/repositories/SavedSearchRepository';
@@ -43,14 +42,14 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   // UI state
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
-  const [showSavedSearches, setShowSavedSearchesPanel] = useState(false);
+  const [showSavedSearchesPanel, setShowSavedSearchesPanel] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<number>();
 
   // Load saved searches on mount
   useEffect(() => {
@@ -93,7 +92,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         totalResults: 0,
         searchTime: 0,
         mostRelevantScore: 0,
-        entityBreakdown: { case: 0, inbox: 0, image: 0 },
+        entityBreakdown: { case: 0, customer: 0, inbox: 0, image: 0, inbox_item: 0, hivemind_report: 0 },
         filterBreakdown: {}
       });
       return;
@@ -200,7 +199,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       totalResults: 0,
       searchTime: 0,
       mostRelevantScore: 0,
-      entityBreakdown: { case: 0, inbox: 0, image: 0 },
+      entityBreakdown: { case: 0, customer: 0, inbox: 0, image: 0, inbox_item: 0, hivemind_report: 0 },
       filterBreakdown: {}
     });
   };
@@ -250,7 +249,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             
             {showSavedSearches && (
               <button
-                onClick={() => setShowSavedSearchesPanel(!showSavedSearches)}
+                onClick={() => setShowSavedSearchesPanel(!showSavedSearchesPanel)}
                 className="p-1 text-gray-400 hover:text-gray-600 rounded"
                 title="Saved searches"
               >
@@ -323,11 +322,12 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             <FilterSelect
               label="Classification"
               options={[
+                { value: 'error', label: 'Error' },
+                { value: 'query', label: 'Query' },
+                { value: 'feature_request', label: 'Feature Request' },
                 { value: 'general', label: 'General' },
                 { value: 'technical', label: 'Technical' },
-                { value: 'bug', label: 'Bug' },
-                { value: 'feature', label: 'Feature' },
-                { value: 'urgent', label: 'Urgent' }
+                { value: 'bug', label: 'Bug' }
               ]}
               value={filters.classification || []}
               onChange={(values) => handleFilterChange({ ...filters, classification: values as CaseClassification[] })}
@@ -362,7 +362,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       )}
 
       {/* Saved searches panel */}
-      {showSavedSearches && savedSearches.length > 0 && (
+      {showSavedSearchesPanel && savedSearches.length > 0 && (
         <div className="mt-3 p-4 border border-gray-200 rounded-lg bg-gray-50">
           <h3 className="text-sm font-medium text-gray-700 mb-3">Recent Saved Searches</h3>
           <div className="space-y-2">

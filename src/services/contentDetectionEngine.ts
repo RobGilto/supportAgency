@@ -13,7 +13,7 @@ import {
   Result
 } from '@/types';
 import { generateUUID } from '@/utils/generators';
-import { patternMatchingService, CategorySuggestion } from '@/services/patternMatchingService';
+import { patternMatchingService } from '@/services/patternMatchingService';
 
 export class ContentDetectionEngine {
   private readonly urlRegex = /https?:\/\/[^\s]+/g;

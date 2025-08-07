@@ -1,6 +1,6 @@
-import { ContentPattern, PatternType, CaseClassification, Result } from '@/types';
+import { ContentPattern, PatternType, CaseClassification, Result, ValidationError, DatabaseError } from '@/types';
 import { BaseRepository } from './base';
-import { database } from '@/services/database';
+import { db } from '@/services/database';
 
 export interface PatternSearchFilters {
   patternType?: PatternType;
@@ -20,7 +20,7 @@ export interface PatternStatistics {
 
 export class ContentPatternRepository extends BaseRepository<ContentPattern> {
   constructor() {
-    super(database.contentPatterns);
+    super(db.contentPatterns);
   }
 
   /**
@@ -28,9 +28,8 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
    */
   async findByFilters(filters: PatternSearchFilters): Promise<Result<ContentPattern[]>> {
     try {
-      let query = this.table.orderBy('confidence').reverse();
-
-      const patterns = await query.toArray();
+      const allPatterns = await this.table.toArray();
+      const patterns = allPatterns.sort((a, b) => b.confidence - a.confidence);
       
       // Apply filters
       let filteredPatterns = patterns;
@@ -44,11 +43,11 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
       }
 
       if (filters.minConfidence !== undefined) {
-        filteredPatterns = filteredPatterns.filter(p => p.confidence >= filters.minConfidence);
+        filteredPatterns = filteredPatterns.filter(p => p.confidence >= filters.minConfidence!);
       }
 
       if (filters.minSuccessRate !== undefined) {
-        filteredPatterns = filteredPatterns.filter(p => p.successRate >= filters.minSuccessRate);
+        filteredPatterns = filteredPatterns.filter(p => p.successRate >= filters.minSuccessRate!);
       }
 
       return { success: true, data: filteredPatterns };
@@ -62,12 +61,12 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
    */
   async findByCategory(category: CaseClassification): Promise<Result<ContentPattern[]>> {
     try {
-      const patterns = await this.table
+      const allPatterns = await this.table
         .where('category')
         .equals(category)
-        .orderBy('confidence')
-        .reverse()
         .toArray();
+      
+      const patterns = allPatterns.sort((a, b) => b.confidence - a.confidence);
 
       return { success: true, data: patterns };
     } catch (error) {
@@ -80,12 +79,12 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
    */
   async findByType(patternType: PatternType): Promise<Result<ContentPattern[]>> {
     try {
-      const patterns = await this.table
+      const allPatterns = await this.table
         .where('patternType')
         .equals(patternType)
-        .orderBy('confidence')
-        .reverse()
         .toArray();
+      
+      const patterns = allPatterns.sort((a, b) => b.confidence - a.confidence);
 
       return { success: true, data: patterns };
     } catch (error) {
@@ -98,11 +97,10 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
    */
   async findTopPerforming(limit: number = 10): Promise<Result<ContentPattern[]>> {
     try {
-      const patterns = await this.table
-        .orderBy('successRate')
-        .reverse()
-        .limit(limit)
-        .toArray();
+      const allPatterns = await this.table.toArray();
+      const patterns = allPatterns
+        .sort((a, b) => b.successRate - a.successRate)
+        .slice(0, limit);
 
       return { success: true, data: patterns };
     } catch (error) {
@@ -191,11 +189,12 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
       };
 
       const patternsByCategory: Record<CaseClassification, number> = {
+        error: 0,
+        query: 0,
+        feature_request: 0,
         general: 0,
         technical: 0,
-        bug: 0,
-        feature: 0,
-        urgent: 0
+        bug: 0
       };
 
       let totalConfidence = 0;
@@ -386,6 +385,73 @@ export class ContentPatternRepository extends BaseRepository<ContentPattern> {
     } catch (error) {
       return this.handleError(error, 'Failed to validate pattern');
     }
+  }
+
+  /**
+   * Validate ContentPattern entity
+   */
+  protected async validateEntity(pattern: ContentPattern): Promise<void> {
+    // Validate required fields
+    if (!pattern.pattern || pattern.pattern.trim().length === 0) {
+      throw new ValidationError('Pattern is required', 'pattern');
+    }
+
+    if (pattern.pattern.length > 1000) {
+      throw new ValidationError('Pattern must be less than 1000 characters', 'pattern');
+    }
+
+    // Validate pattern type
+    const validPatternTypes: PatternType[] = ['keyword', 'regex', 'semantic'];
+    if (!validPatternTypes.includes(pattern.patternType)) {
+      throw new ValidationError('Invalid pattern type', 'patternType');
+    }
+
+    // Validate category
+    const validCategories: CaseClassification[] = ['error', 'query', 'feature_request', 'general', 'technical', 'bug'];
+    if (!validCategories.includes(pattern.category)) {
+      throw new ValidationError('Invalid category', 'category');
+    }
+
+    // Validate confidence range
+    if (pattern.confidence < 0 || pattern.confidence > 1) {
+      throw new ValidationError('Confidence must be between 0 and 1', 'confidence');
+    }
+
+    // Validate success rate range
+    if (pattern.successRate < 0 || pattern.successRate > 1) {
+      throw new ValidationError('Success rate must be between 0 and 1', 'successRate');
+    }
+
+    // Validate examples array
+    if (pattern.examples.length > 10) {
+      throw new ValidationError('Maximum 10 examples allowed per pattern', 'examples');
+    }
+
+    for (const example of pattern.examples) {
+      if (example.length > 500) {
+        throw new ValidationError('Individual examples must be less than 500 characters', 'examples');
+      }
+    }
+
+    // Validate regex patterns if applicable
+    if (pattern.patternType === 'regex') {
+      try {
+        new RegExp(pattern.pattern);
+      } catch {
+        throw new ValidationError('Invalid regex pattern syntax', 'pattern');
+      }
+    }
+  }
+
+  /**
+   * Handle database errors consistently
+   */
+  protected handleError(error: any, message: string): Result<any, DatabaseError> {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: new DatabaseError(`${message}: ${errorMessage}`)
+    };
   }
 }
 
