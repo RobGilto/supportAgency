@@ -18,6 +18,7 @@ const PasteAnalysisCard: React.FC<PasteAnalysisCardProps> = ({
 
   const getContentTypeIcon = (contentType: string): string => {
     switch (contentType) {
+      case 'case_number': return '🔢';
       case 'support_request': return '🎫';
       case 'console_log': return '🔧';
       case 'url_link': return '🔗';
@@ -29,6 +30,7 @@ const PasteAnalysisCard: React.FC<PasteAnalysisCardProps> = ({
 
   const getContentTypeLabel = (contentType: string): string => {
     switch (contentType) {
+      case 'case_number': return 'Case Number';
       case 'support_request': return 'Support Request';
       case 'console_log': return 'Console Log';
       case 'url_link': return 'URL Link';
@@ -108,6 +110,15 @@ const PasteAnalysisCard: React.FC<PasteAnalysisCardProps> = ({
         <div className="mb-4">
           <h4 className="font-medium text-sm text-gray-700 mb-2">Extracted Information</h4>
           <div className="space-y-1 text-sm">
+            {pasteEvent.metadata.caseNumbers && pasteEvent.metadata.caseNumbers.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-purple-600">🔢</span>
+                <span className="text-gray-600">
+                  Case Number: {pasteEvent.metadata.caseNumbers.join(', ')}
+                </span>
+              </div>
+            )}
+            
             {pasteEvent.metadata.urls && pasteEvent.metadata.urls.length > 0 && (
               <div className="flex items-center space-x-2">
                 <span className="text-blue-600">🔗</span>
@@ -148,6 +159,118 @@ const PasteAnalysisCard: React.FC<PasteAnalysisCardProps> = ({
                 <span className="text-gray-600">
                   {pasteEvent.metadata.urgencyLevel} priority
                 </span>
+              </div>
+            )}
+            
+            {pasteEvent.metadata.patternMatches && pasteEvent.metadata.patternMatches.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">🎯</span>
+                <span className="text-gray-600">
+                  {pasteEvent.metadata.patternMatches.length} pattern match(es) found
+                </span>
+              </div>
+            )}
+            
+            {pasteEvent.metadata.duplicateContent && (
+              <div className="flex items-center space-x-2">
+                <span className="text-orange-600">⚠️</span>
+                <span className="text-gray-600">
+                  Potential duplicate content detected
+                </span>
+              </div>
+            )}
+            
+            {pasteEvent.metadata.similarCases && pasteEvent.metadata.similarCases.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-600">🔍</span>
+                <span className="text-gray-600">
+                  {pasteEvent.metadata.similarCases.length} similar case(s) found
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pattern Matches Details */}
+      {pasteEvent.metadata.patternMatches && pasteEvent.metadata.patternMatches.length > 0 && (
+        <div className="mb-4">
+          <h4 className="font-medium text-sm text-gray-700 mb-2">Pattern Matches</h4>
+          <div className="space-y-2">
+            {pasteEvent.metadata.patternMatches.slice(0, 3).map((match, index) => (
+              <div key={index} className="bg-green-50 border border-green-200 rounded p-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-green-600">
+                      {match.matchType === 'exact' ? '🎯' : 
+                       match.matchType === 'semantic' ? '🧠' : '📝'}
+                    </span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {match.pattern}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className={`text-xs px-2 py-1 rounded ${getConfidenceColor(match.confidence)}`}>
+                      {formatConfidence(match.confidence)}
+                    </span>
+                    <span className="text-xs text-gray-500 capitalize">
+                      {match.matchType}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {pasteEvent.metadata.patternMatches.length > 3 && (
+              <div className="text-xs text-gray-500 text-center">
+                +{pasteEvent.metadata.patternMatches.length - 3} more matches
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Similar Cases Details */}
+      {pasteEvent.metadata.similarCases && pasteEvent.metadata.similarCases.length > 0 && (
+        <div className="mb-4">
+          <h4 className="font-medium text-sm text-gray-700 mb-2">
+            {pasteEvent.metadata.duplicateContent ? 'Potential Duplicates' : 'Similar Cases'}
+          </h4>
+          <div className="space-y-2">
+            {pasteEvent.metadata.similarCases.slice(0, 3).map((similar) => (
+              <div 
+                key={similar.caseId} 
+                className={`border rounded p-2 ${
+                  pasteEvent.metadata.duplicateContent && similar.similarity > 0.95
+                    ? 'bg-orange-50 border-orange-200' 
+                    : 'bg-blue-50 border-blue-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className={
+                      pasteEvent.metadata.duplicateContent && similar.similarity > 0.95
+                        ? 'text-orange-600' : 'text-blue-600'
+                    }>
+                      {pasteEvent.metadata.duplicateContent && similar.similarity > 0.95 ? '⚠️' : '🔍'}
+                    </span>
+                    <div>
+                      <div className="text-sm font-medium text-gray-800">
+                        Case #{similar.caseNumber}
+                      </div>
+                      <div className="text-xs text-gray-600 truncate max-w-48">
+                        {similar.title}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {Math.round(similar.similarity * 100)}% match
+                  </div>
+                </div>
+              </div>
+            ))}
+            {pasteEvent.metadata.similarCases.length > 3 && (
+              <div className="text-xs text-gray-500 text-center">
+                +{pasteEvent.metadata.similarCases.length - 3} more cases
               </div>
             )}
           </div>

@@ -10,6 +10,7 @@ const Navigation: React.FC = () => {
     { path: '/cases', name: 'Cases', icon: '📋', description: 'Manage support cases' },
     { path: '/inbox', name: 'Inbox', icon: '📥', description: 'Process new content' },
     { path: '/gallery', name: 'Gallery', icon: '🖼️', description: 'Image management' },
+    { path: '/search', name: 'Search', icon: '🔍', description: 'Advanced search & filtering' },
     { path: '/analytics', name: 'Analytics', icon: '📊', description: 'Insights & reports' },
     { path: '/settings', name: 'Settings', icon: '⚙️', description: 'App preferences' },
     { path: '/test', name: 'DB Test', icon: '🧪', description: 'Database testing' },

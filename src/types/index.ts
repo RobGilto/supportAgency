@@ -317,6 +317,10 @@ export interface PasteMetadata {
   technicalDetails?: TechnicalInfo;
   customerInfo?: CustomerInfo;
   urgencyLevel?: UrgencyLevel;
+  caseNumbers?: string[];
+  patternMatches?: PatternMatchInfo[];
+  similarCases?: SimilarCaseInfo[];
+  duplicateContent?: boolean;
 }
 
 export interface ImageInfo {
@@ -349,6 +353,19 @@ export interface CustomerInfo {
   detectionConfidence: number;
 }
 
+export interface PatternMatchInfo {
+  pattern: string;
+  confidence: number;
+  matchType: 'exact' | 'partial' | 'semantic';
+}
+
+export interface SimilarCaseInfo {
+  caseId: string;
+  caseNumber: string;
+  similarity: number;
+  title: string;
+}
+
 export interface ContentAnalysisResult {
   contentType: DetectedContentType;
   confidence: number;
@@ -360,8 +377,8 @@ export interface ContentAnalysisResult {
 }
 
 // New types for content processing
-export type DetectedContentType = 'support_request' | 'url_link' | 'console_log' | 'image' | 'mixed_content' | 'plain_text';
-export type PasteActionType = 'create_case' | 'add_to_inbox' | 'extract_url' | 'process_image' | 'analyze_logs' | 'save_for_later';
+export type DetectedContentType = 'support_request' | 'url_link' | 'console_log' | 'image' | 'mixed_content' | 'plain_text' | 'case_number';
+export type PasteActionType = 'create_case' | 'add_to_inbox' | 'extract_url' | 'process_image' | 'analyze_logs' | 'save_for_later' | 'lookup_case';
 export type UrgencyLevel = 'low' | 'medium' | 'high' | 'critical';
 
 // Result Pattern for Error Handling

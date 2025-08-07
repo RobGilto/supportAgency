@@ -198,11 +198,20 @@ export class ClipboardService {
     if (this.isListening) return;
 
     const handlePaste = async (event: ClipboardEvent) => {
-      // Only process if we have listeners and clipboard is inside a paste area
+      // Only process if we have listeners
       if (this.listeners.size === 0) return;
 
       const target = event.target as Element;
-      if (!this.isPasteTargetValid(target)) return;
+      const isValidTarget = this.isPasteTargetValid(target);
+      
+      console.log('Paste event detected:', {
+        target: target.tagName,
+        isValidTarget,
+        hasPageMarker: !!document.querySelector('body[data-paste-page], html[data-paste-page], [data-paste-page-root]'),
+        hasPasteArea: !!target.closest('.paste-area, [data-paste-enabled]')
+      });
+
+      if (!isValidTarget) return;
 
       const pasteResult = await this.processPasteEvent(event);
       if (pasteResult.success) {
@@ -214,6 +223,8 @@ export class ClipboardService {
             console.error('Error in paste event listener:', error);
           }
         });
+      } else {
+        console.error('Failed to process paste event:', pasteResult.error);
       }
     };
 
@@ -238,7 +249,11 @@ export class ClipboardService {
   private isPasteTargetValid(target: Element): boolean {
     // Check if target or parent has paste area class
     const pasteArea = target.closest('.paste-area, [data-paste-enabled]');
-    return !!pasteArea;
+    if (pasteArea) return true;
+    
+    // Check if the page itself is marked as a paste-enabled page (for page-wide paste)
+    const pageRoot = document.querySelector('body[data-paste-page], html[data-paste-page], [data-paste-page-root]');
+    return !!pageRoot;
   }
 
   /**
@@ -274,6 +289,106 @@ export class ClipboardService {
       permission,
       ready: supported && permission
     };
+  }
+
+  /**
+   * Process multiple paste events in batch
+   */
+  async processBatchPaste(contents: string[]): Promise<Result<PasteEvent[]>> {
+    if (contents.length === 0) {
+      return {
+        success: false,
+        error: new Error('No content provided for batch processing')
+      };
+    }
+
+    try {
+      const startTime = performance.now();
+      
+      // Process all contents in parallel
+      const promises = contents.map(content => 
+        contentDetectionEngine.createPasteEvent(content, 'clipboard')
+      );
+      
+      const results = await Promise.all(promises);
+      const processingTime = performance.now() - startTime;
+      
+      // Separate successful and failed results
+      const successful: PasteEvent[] = [];
+      const errors: Error[] = [];
+      
+      results.forEach(result => {
+        if (result.success) {
+          successful.push(result.data);
+        } else {
+          errors.push(result.error);
+        }
+      });
+      
+      console.log(`Batch paste processed: ${successful.length}/${contents.length} successful in ${processingTime.toFixed(2)}ms`);
+      
+      if (successful.length === 0) {
+        return {
+          success: false,
+          error: new Error(`All batch paste operations failed. First error: ${errors[0]?.message}`)
+        };
+      }
+      
+      // Return successful results even if some failed
+      return { success: true, data: successful };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error('Batch paste processing failed')
+      };
+    }
+  }
+
+  /**
+   * Handle multiple clipboard formats simultaneously
+   */
+  async processMultiFormatPaste(clipboardData: DataTransfer): Promise<Result<PasteEvent[]>> {
+    try {
+      const pasteEvents: PasteEvent[] = [];
+      const formats = ['text/plain', 'text/html'];
+      
+      // Process each available format
+      for (const format of formats) {
+        const content = clipboardData.getData(format);
+        if (content && content.trim()) {
+          const pasteResult = await contentDetectionEngine.createPasteEvent(content, 'clipboard');
+          if (pasteResult.success) {
+            pasteEvents.push(pasteResult.data);
+          }
+        }
+      }
+      
+      // Process any files
+      const files = Array.from(clipboardData.files);
+      for (const file of files) {
+        if (file.type.startsWith('image/')) {
+          const dataUrl = await this.fileToDataUrl(file);
+          const pasteResult = await contentDetectionEngine.createPasteEvent(dataUrl, 'clipboard');
+          if (pasteResult.success) {
+            pasteEvents.push(pasteResult.data);
+          }
+        }
+      }
+      
+      if (pasteEvents.length === 0) {
+        return {
+          success: false,
+          error: new Error('No processable content found in clipboard')
+        };
+      }
+      
+      return { success: true, data: pasteEvents };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error('Multi-format paste processing failed')
+      };
+    }
   }
 
   /**

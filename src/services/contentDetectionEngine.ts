@@ -13,10 +13,18 @@ import {
   Result
 } from '@/types';
 import { generateUUID } from '@/utils/generators';
+import { patternMatchingService, CategorySuggestion } from '@/services/patternMatchingService';
 
 export class ContentDetectionEngine {
   private readonly urlRegex = /https?:\/\/[^\s]+/g;
   private readonly emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  private readonly caseNumberRegex = /\b\d{8}\b/g; // 8-digit case numbers like 05908032
+  private readonly caseNumberPatterns = [
+    /^(\d{8})$/,  // Exact 8-digit match
+    /\bcase\s*#?\s*(\d{8})\b/i,  // "case 05908032" or "case #05908032"
+    /\b#(\d{8})\b/,  // "#05908032"
+    /\bticket\s*#?\s*(\d{8})\b/i,  // "ticket 05908032"
+  ];
   private readonly consoleErrorPatterns = [
     /^Uncaught\s+/i,
     /^Error:/i,
@@ -55,10 +63,39 @@ export class ContentDetectionEngine {
       // Extract metadata
       const metadata = await this.extractMetadata(content, contentType);
       
-      // Determine classification and priority
-      const classification = this.classifyContent(content, metadata);
+      // Determine initial classification and priority
+      let classification = this.classifyContent(content, metadata);
       const priority = this.assessPriority(content, metadata);
-      const confidence = this.calculateConfidence(content, contentType, metadata);
+      let confidence = this.calculateConfidence(content, contentType, metadata);
+      
+      // Enhance classification with pattern matching
+      const analysis: ContentAnalysisResult = {
+        contentType,
+        confidence,
+        classification,
+        priority,
+        suggestedTitle: '',
+        extractedData: metadata,
+        processingTime: 0
+      };
+      
+      const categorySuggestions = await patternMatchingService.suggestCategory(analysis, content);
+      if (categorySuggestions.success && categorySuggestions.data.length > 0) {
+        const topSuggestion = categorySuggestions.data[0];
+        
+        // Use pattern-based classification if confidence is higher
+        if (topSuggestion.confidence > confidence) {
+          classification = topSuggestion.category;
+          confidence = Math.max(confidence, topSuggestion.confidence);
+          
+          // Add pattern match info to metadata
+          metadata.patternMatches = topSuggestion.matchedPatterns.map(pm => ({
+            pattern: pm.pattern.pattern,
+            confidence: pm.confidence,
+            matchType: pm.matchType
+          }));
+        }
+      }
       
       // Generate suggested title
       const suggestedTitle = this.generateTitle(content, contentType, metadata);
@@ -124,6 +161,11 @@ export class ContentDetectionEngine {
   private detectContentType(content: string): DetectedContentType {
     const trimmedContent = content.trim();
     
+    // Check for case numbers first (most specific)
+    if (this.isCaseNumber(trimmedContent)) {
+      return 'case_number';
+    }
+    
     // Check for images (data URLs)
     if (trimmedContent.startsWith('data:image/')) {
       return 'image';
@@ -152,8 +194,9 @@ export class ContentDetectionEngine {
     const hasUrls = urls && urls.length > 0;
     const hasErrors = this.hasConsoleErrors(trimmedContent);
     const hasSupportLanguage = this.hasSupportRequestLanguage(trimmedContent);
+    const hasCaseNumbers = this.extractCaseNumbers(trimmedContent).length > 0;
     
-    if ([hasUrls, hasErrors, hasSupportLanguage].filter(Boolean).length > 1) {
+    if ([hasUrls, hasErrors, hasSupportLanguage, hasCaseNumbers].filter(Boolean).length > 1) {
       return 'mixed_content';
     }
     
@@ -165,6 +208,12 @@ export class ContentDetectionEngine {
    */
   private async extractMetadata(content: string, _contentType: DetectedContentType): Promise<PasteMetadata> {
     const metadata: PasteMetadata = {};
+    
+    // Extract case numbers
+    const caseNumbers = this.extractCaseNumbers(content);
+    if (caseNumbers.length > 0) {
+      metadata.caseNumbers = caseNumbers;
+    }
     
     // Extract URLs
     const urls = content.match(this.urlRegex);
@@ -231,6 +280,49 @@ export class ContentDetectionEngine {
    */
   private hasSupportRequestLanguage(content: string): boolean {
     return this.supportRequestPatterns.some(pattern => pattern.test(content));
+  }
+
+  /**
+   * Check if content appears to be a case number
+   */
+  private isCaseNumber(content: string): boolean {
+    const trimmed = content.trim();
+    
+    // Check if it's a pure 8-digit number
+    if (/^\d{8}$/.test(trimmed)) {
+      return true;
+    }
+    
+    // Check for case number patterns
+    return this.caseNumberPatterns.some(pattern => pattern.test(trimmed));
+  }
+
+  /**
+   * Extract case numbers from content
+   */
+  private extractCaseNumbers(content: string): string[] {
+    const caseNumbers: string[] = [];
+    
+    // Extract using all patterns
+    for (const pattern of this.caseNumberPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        // Extract the captured group (the actual number)
+        const caseNumber = matches[1] || matches[0];
+        if (caseNumber && /^\d{8}$/.test(caseNumber)) {
+          caseNumbers.push(caseNumber);
+        }
+      }
+    }
+    
+    // Also check for standalone 8-digit numbers
+    const standaloneMatches = content.match(this.caseNumberRegex);
+    if (standaloneMatches) {
+      caseNumbers.push(...standaloneMatches);
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(caseNumbers)];
   }
 
   /**
@@ -392,6 +484,12 @@ export class ContentDetectionEngine {
     const truncatedContent = content.substring(0, 100).trim();
     
     switch (contentType) {
+      case 'case_number':
+        if (metadata.caseNumbers && metadata.caseNumbers.length > 0) {
+          return `Case Reference: ${metadata.caseNumbers[0]}`;
+        }
+        return 'Case Number';
+        
       case 'console_log':
         if (metadata.consoleErrors && metadata.consoleErrors.length > 0) {
           return `Console Error: ${metadata.consoleErrors[0].message.substring(0, 50)}`;
@@ -435,6 +533,31 @@ export class ContentDetectionEngine {
     
     // Content-specific actions
     switch (analysis.contentType) {
+      case 'case_number':
+        // Add case lookup action
+        actions.unshift({
+          id: generateUUID(),
+          type: 'lookup_case',
+          label: 'Look Up Case',
+          description: 'Find and open this existing case',
+          confidence: 0.95,
+          data: {
+            caseNumber: analysis.extractedData.caseNumbers?.[0]
+          }
+        });
+        // Also offer to create a new case with this number as reference
+        actions.push({
+          id: generateUUID(),
+          type: 'create_case',
+          label: 'Create Related Case',
+          description: 'Create a new case referencing this case number',
+          confidence: 0.7,
+          data: {
+            relatedCaseNumber: analysis.extractedData.caseNumbers?.[0]
+          }
+        });
+        break;
+        
       case 'support_request':
         actions.unshift({
           id: generateUUID(),

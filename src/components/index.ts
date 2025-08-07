@@ -8,3 +8,5 @@ export { default as PasteArea } from './PasteArea';
 export { default as PasteAnalysisCard } from './PasteAnalysisCard';
 export { default as ImageDropZone } from './ImageDropZone';
 export { default as ImageGalleryCarousel } from './ImageGalleryCarousel';
+export { default as AdvancedSearch } from './AdvancedSearch';
+export { default as SearchResults } from './SearchResults';
